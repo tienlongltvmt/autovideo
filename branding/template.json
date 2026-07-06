@@ -1,0 +1,25 @@
+{
+    "width": 1080,
+    "banner": {
+        "height": 170,
+        "background": "#0E3226",
+        "title": "Đào Tạo Dưỡng Sinh",
+        "titleColor": "#F0C96A",
+        "titleSize": 68,
+        "logo": "logo.png",
+        "logoHeight": 130
+    },
+    "watermark": {
+        "subtext": "Dưỡng sinh đông y",
+        "text": "TRANG ANNA",
+        "color": "white",
+        "opacity": 0.55,
+        "size": 44,
+        "subSize": 34,
+        "x": 46,
+        "y": 60
+    },
+    "font": "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+    "fontItalic": "/System/Library/Fonts/Supplemental/Arial Italic.ttf",
+    "suffix": " [brand]"
+}

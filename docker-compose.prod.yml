@@ -1,0 +1,46 @@
+# Production: chạy cả app lẫn cobalt bằng một lệnh
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# cobalt chỉ mở trong mạng nội bộ docker, không expose ra ngoài.
+# App truy cập cobalt qua hostname nội bộ nên tunnel hoạt động bình thường.
+
+# tên project riêng để không đụng độ với docker-compose.yml (môi trường dev):
+# hai file dùng chung tên service `cobalt-api`, nếu chung project thì
+# `up` của file này sẽ thay thế container của file kia
+name: downloadauto-prod
+
+services:
+    cobalt-api:
+        image: ghcr.io/imputnet/cobalt:11
+        init: true
+        read_only: true
+        restart: unless-stopped
+        expose:
+            - 9000
+        environment:
+            # chỉ app container cần truy cập được URL này
+            API_URL: "http://cobalt-api:9000/"
+            # DURATION_LIMIT: 10800
+            # COOKIE_PATH: "/cookies.json"
+        # volumes:
+        #     - ./cookies.json:/cookies.json
+
+    app:
+        build: .
+        restart: unless-stopped
+        ports:
+            # đổi cổng host bằng biến APP_PORT (mặc định 3000)
+            - "${APP_PORT:-3000}:3000"
+        environment:
+            COBALT_API_URL: "http://cobalt-api:9000"
+            CONCURRENCY: "${CONCURRENCY:-3}"
+            DOWNLOAD_DIR: /downloads
+            DATA_DIR: /data
+            PORT: 3000
+            # bắt buộc nên đặt khi mở ra internet:
+            APP_PASSWORD: "${APP_PASSWORD:-}"
+        volumes:
+            - ./downloads:/downloads
+            - ./data:/data
+        depends_on:
+            - cobalt-api

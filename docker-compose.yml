@@ -1,0 +1,28 @@
+# môi trường dev: chỉ chạy cobalt, app chạy bằng `npm start` trên máy
+name: downloadauto-dev
+
+services:
+    cobalt-api:
+        image: ghcr.io/imputnet/cobalt:11
+
+        init: true
+        read_only: true
+        restart: unless-stopped
+        container_name: cobalt-api
+
+        ports:
+            - 127.0.0.1:9000:9000
+
+        environment:
+            # URL mà client dùng để truy cập instance — bắt buộc phải đúng
+            # để các link tunnel (proxy/remux) hoạt động
+            API_URL: "http://localhost:9000/"
+
+            # Giới hạn độ dài video (giây), mặc định 10800 (3 tiếng)
+            # DURATION_LIMIT: 10800
+
+            # Nếu cần cookies cho một số nền tảng (Instagram, Reddit...):
+            # COOKIE_PATH: "/cookies.json"
+
+        # volumes:
+        #     - ./cookies.json:/cookies.json

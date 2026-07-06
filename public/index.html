@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DownloadAuto — tải video đa nền tảng</title>
+<style>
+    :root {
+        --bg: #101014;
+        --panel: #18181f;
+        --panel2: #1f1f29;
+        --border: #2c2c3a;
+        --text: #ececf1;
+        --muted: #9a9aad;
+        --accent: #6c8cff;
+        --ok: #4ade80;
+        --warn: #fbbf24;
+        --err: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+    }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+    h1 { font-size: 22px; margin: 0; }
+    h1 span { color: var(--accent); }
+    .badge {
+        font-size: 12px; padding: 4px 10px; border-radius: 999px;
+        border: 1px solid var(--border); color: var(--muted);
+        display: inline-flex; align-items: center; gap: 6px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--err); }
+    .dot.on { background: var(--ok); }
+
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+    textarea {
+        width: 100%; min-height: 110px; resize: vertical;
+        background: var(--panel2); color: var(--text);
+        border: 1px solid var(--border); border-radius: 10px;
+        padding: 12px; font-size: 14px; font-family: inherit;
+    }
+    textarea:focus, select:focus { outline: 1px solid var(--accent); }
+    .options { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+    .opt { display: flex; flex-direction: column; gap: 4px; }
+    .opt label { font-size: 12px; color: var(--muted); }
+    select {
+        background: var(--panel2); color: var(--text);
+        border: 1px solid var(--border); border-radius: 8px;
+        padding: 7px 10px; font-size: 13px;
+    }
+    .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .lchips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    .lchips .count { font-size: 12px; color: var(--muted); align-self: center; }
+    .lchip {
+        font-size: 12px; padding: 3px 10px; border-radius: 999px;
+        border: 1px solid var(--border); color: var(--text);
+        display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+    }
+    .lchip .svc { font-size: 11px; }
+    .lchip.ok .svc { color: var(--ok); }
+    .lchip.maybe { border-color: #5a4a1f; }
+    .lchip.maybe .svc { color: var(--warn); }
+    .lchip .host { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    button {
+        border: 0; border-radius: 10px; padding: 10px 18px;
+        font-size: 14px; font-weight: 600; cursor: pointer;
+        background: var(--accent); color: #fff;
+    }
+    button:disabled { opacity: .5; cursor: default; }
+    button.ghost {
+        background: transparent; color: var(--muted);
+        border: 1px solid var(--border); font-weight: 500;
+    }
+    .hint { font-size: 12px; color: var(--muted); }
+
+    .job { border-bottom: 1px solid var(--border); padding: 12px 0; }
+    .job:last-child { border-bottom: 0; }
+    .job-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+    .job-name { font-size: 14px; word-break: break-all; }
+    .job-name a { color: var(--accent); text-decoration: none; }
+    .job-name a:hover { text-decoration: underline; }
+    .job-url { font-size: 12px; color: var(--muted); word-break: break-all; margin-top: 2px; }
+    .chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+    .chip.queued      { background: #333344; color: var(--muted); }
+    .chip.resolving   { background: #3a3350; color: #c4b5fd; }
+    .chip.downloading { background: #1e3a5f; color: #7dd3fc; }
+    .chip.processing  { background: #3d2f14; color: var(--warn); }
+    .chip.done        { background: #14351f; color: var(--ok); }
+    .chip.expanded    { background: #14351f; color: var(--ok); }
+    .chip.error       { background: #3f1d1d; color: var(--err); }
+    .chip.canceled    { background: #333344; color: var(--muted); }
+    .bar { height: 6px; border-radius: 3px; background: var(--panel2); margin-top: 8px; overflow: hidden; }
+    .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .3s; }
+    .bar i.indet { width: 30% !important; animation: slide 1.2s linear infinite; }
+    @keyframes slide { from { margin-left: -30%; } to { margin-left: 100%; } }
+    .job-meta { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+    .job-actions { display: flex; gap: 6px; }
+    .job-actions button { padding: 3px 10px; font-size: 12px; }
+    .err-msg { color: var(--err); font-size: 12px; margin-top: 4px; }
+    .note-msg { color: var(--warn); font-size: 12px; margin-top: 4px; }
+    .empty { text-align: center; color: var(--muted); padding: 30px 0; font-size: 14px; }
+    footer { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+    code { background: var(--panel2); padding: 1px 6px; border-radius: 6px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <h1>⬇ Download<span>Auto</span></h1>
+        <span class="badge" id="cobaltBadge"><span class="dot" id="cobaltDot"></span><span id="cobaltText">đang kiểm tra cobalt…</span></span>
+    </header>
+
+    <div class="card">
+        <textarea id="urls" placeholder="Dán link hoặc văn bản chứa link vào đây — app tự bắt link&#10;https://www.youtube.com/watch?v=...&#10;Xem video này hay lắm: tiktok.com/@user/video/123&#10;https://x.com/user/status/..."></textarea>
+        <div class="lchips" id="linkPreview" hidden></div>
+        <div class="options">
+            <div class="opt">
+                <label>Chế độ</label>
+                <select id="downloadMode">
+                    <option value="auto">Video + tiếng</option>
+                    <option value="audio">Chỉ âm thanh</option>
+                    <option value="mute">Video không tiếng</option>
+                </select>
+            </div>
+            <div class="opt">
+                <label>Chất lượng video</label>
+                <select id="videoQuality">
+                    <option value="max">Cao nhất</option>
+                    <option value="2160">4K (2160p)</option>
+                    <option value="1440">1440p</option>
+                    <option value="1080" selected>1080p</option>
+                    <option value="720">720p</option>
+                    <option value="480">480p</option>
+                    <option value="360">360p</option>
+                </select>
+            </div>
+            <div class="opt">
+                <label>Định dạng audio</label>
+                <select id="audioFormat">
+                    <option value="mp3" selected>mp3</option>
+                    <option value="best">gốc (best)</option>
+                    <option value="ogg">ogg</option>
+                    <option value="opus">opus</option>
+                    <option value="wav">wav</option>
+                </select>
+            </div>
+            <div class="opt">
+                <label>Kiểu tên file</label>
+                <select id="filenameStyle">
+                    <option value="basic" selected>đơn giản</option>
+                    <option value="pretty">đẹp</option>
+                    <option value="classic">cổ điển</option>
+                    <option value="nerdy">chi tiết</option>
+                </select>
+            </div>
+        </div>
+        <div class="row">
+            <button id="addBtn">Tải xuống</button>
+            <button class="ghost" id="filterBtn" hidden>Lọc link</button>
+            <button class="ghost" id="clearInputBtn" hidden>Xóa nội dung</button>
+            <label class="hint" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" id="brandOpt"> Gắn khung thương hiệu
+            </label>
+            <span class="hint" id="queueHint"></span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="row" style="justify-content: space-between; margin-bottom: 4px;">
+            <strong style="font-size:15px">Hàng đợi tải</strong>
+            <span style="display:flex; gap:6px;">
+                <button class="ghost" id="clearBtn">Dọn mục đã xong</button>
+                <button class="ghost" id="clearAllBtn">Xóa tất cả</button>
+            </span>
+        </div>
+        <div id="jobList"><div class="empty">Chưa có gì trong hàng đợi</div></div>
+    </div>
+
+    <footer>File được lưu vào <code id="downloadDir">downloads/</code></footer>
+</div>
+
+<script type="module">
+import { extractLinks, serviceForUrl } from "/extract-links.js";
+
+const jobs = new Map();
+const $ = (id) => document.getElementById(id);
+let supportedServices = null; // lấy từ instance cobalt qua /api/status
+
+function fmtBytes(n) {
+    if (!n) return "0 B";
+    const units = ["B", "KB", "MB", "GB"];
+    let i = 0;
+    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+    return n.toFixed(n >= 100 || i === 0 ? 0 : 1) + " " + units[i];
+}
+
+const STATUS_LABEL = {
+    queued: "chờ", resolving: "phân giải", downloading: "đang tải",
+    processing: "đang xử lý", done: "xong", expanded: "đã tách",
+    error: "lỗi", canceled: "đã hủy",
+};
+const VIDEO_RE = /\.(mp4|mov|mkv|webm|m4v)$/i;
+
+function render() {
+    const list = $("jobList");
+    const items = [...jobs.values()].sort((a, b) => b.createdAt - a.createdAt);
+    if (!items.length) {
+        list.innerHTML = '<div class="empty">Chưa có gì trong hàng đợi</div>';
+        return;
+    }
+    list.innerHTML = items.map(renderJob).join("");
+}
+
+function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function renderJob(j) {
+    const pct = j.total ? Math.min(100, (j.received / j.total) * 100) : 0;
+    const active = j.status === "downloading";
+    const indet = active && !j.total;
+    const name = j.filename
+        ? (j.status === "done"
+            ? `<a href="/files/${encodeURIComponent(j.filename)}" target="_blank">${esc(j.filename)}</a>`
+            : esc(j.filename))
+        : esc(j.label ? `(${j.label})` : "…");
+
+    let meta = "";
+    if (active) {
+        meta = `${fmtBytes(j.received)}${j.total ? " / " + fmtBytes(j.total) : ""}` +
+               (j.speed ? ` — ${fmtBytes(j.speed)}/s` : "");
+    } else if (j.status === "done") {
+        meta = fmtBytes(j.received);
+    }
+
+    const actions = [];
+    if (["queued", "resolving", "downloading"].includes(j.status))
+        actions.push(`<button class="ghost" onclick="act('${j.id}','cancel')">Hủy</button>`);
+    if (["error", "canceled"].includes(j.status))
+        actions.push(`<button class="ghost" onclick="act('${j.id}','retry')">Thử lại</button>`);
+    if (["done", "error", "canceled", "expanded"].includes(j.status))
+        actions.push(`<button class="ghost" onclick="removeJob('${j.id}')">Xóa</button>`);
+    if (j.status === "done" && j.filename)
+        actions.push(`<button class="ghost" onclick="removeJob('${j.id}', true)">Xóa +file</button>`);
+
+    return `<div class="job">
+        <div class="job-top">
+            <div>
+                <div class="job-name">${name}</div>
+                <div class="job-url">${esc(j.url)}${j.label ? " · " + esc(j.label) : ""}</div>
+            </div>
+            <span class="chip ${j.status}">${STATUS_LABEL[j.status] || j.status}</span>
+        </div>
+        ${active || j.status === "resolving"
+            ? `<div class="bar"><i class="${indet || j.status === "resolving" ? "indet" : ""}" style="width:${pct}%"></i></div>`
+            : ""}
+        <div class="job-meta">
+            <span>${meta}</span>
+            <span class="job-actions">${actions.join("")}</span>
+        </div>
+        ${j.error ? `<div class="err-msg">${esc(j.error)}</div>` : ""}
+        ${j.note ? `<div class="note-msg">${esc(j.note)}</div>` : ""}
+    </div>`;
+}
+
+async function act(id, action) {
+    await fetch(`/api/jobs/${id}/${action}`, { method: "POST" });
+}
+async function removeJob(id, withFile = false) {
+    if (withFile && !confirm("Xóa cả file đã tải trên đĩa?")) return;
+    await fetch(`/api/jobs/${id}${withFile ? "?deleteFile=1" : ""}`, { method: "DELETE" });
+    jobs.delete(id);
+    render();
+}
+// script chạy ở module scope nên phải expose cho các onclick inline
+window.act = act;
+window.removeJob = removeJob;
+
+// ── bắt link trong input ──────────────────────────────────────────
+function detectedLinks() {
+    return extractLinks($("urls").value);
+}
+
+function updatePreview() {
+    const text = $("urls").value;
+    const links = detectedLinks();
+    const preview = $("linkPreview");
+
+    $("addBtn").textContent = links.length > 1 ? `Tải xuống (${links.length} link)` : "Tải xuống";
+    $("addBtn").disabled = !links.length;
+    $("clearInputBtn").hidden = !text.trim();
+    // hiện nút "Lọc link" khi văn bản có lẫn nội dung không phải link
+    $("filterBtn").hidden =
+        !links.length || links.join("\n") === text.trim().split(/\n+/).map(s => s.trim()).join("\n");
+
+    if (!text.trim()) {
+        preview.hidden = true;
+        $("addBtn").disabled = true;
+        return;
+    }
+    preview.hidden = false;
+
+    if (!links.length) {
+        preview.innerHTML = '<span class="count">Không tìm thấy link nào trong văn bản</span>';
+        return;
+    }
+
+    const chips = links.map((u) => {
+        const svc = serviceForUrl(u);
+        const host = new URL(u).hostname.replace(/^www\./, "");
+        const known = svc && (!supportedServices || supportedServices.has(svc));
+        return `<span class="lchip ${known ? "ok" : "maybe"}" title="${esc(u)}">
+            <span class="host">${esc(host)}</span>
+            <span class="svc">${known ? esc(svc) : "chưa rõ hỗ trợ"}</span>
+        </span>`;
+    });
+    preview.innerHTML = `<span class="count">🔗 Bắt được ${links.length} link:</span>` + chips.join("");
+}
+
+$("urls").addEventListener("input", updatePreview);
+
+$("filterBtn").onclick = () => {
+    $("urls").value = detectedLinks().join("\n");
+    updatePreview();
+};
+
+$("clearInputBtn").onclick = () => {
+    $("urls").value = "";
+    updatePreview();
+    $("urls").focus();
+};
+
+$("addBtn").onclick = async () => {
+    const text = $("urls").value.trim();
+    if (!text) return;
+    $("addBtn").disabled = true;
+    try {
+        const res = await fetch("/api/jobs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                text,
+                options: {
+                    downloadMode: $("downloadMode").value,
+                    videoQuality: $("videoQuality").value,
+                    audioFormat: $("audioFormat").value,
+                    filenameStyle: $("filenameStyle").value,
+                },
+            }),
+        });
+        const data = await res.json();
+        if (res.ok) { $("urls").value = ""; updatePreview(); }
+        else alert(data.error || "Có lỗi xảy ra");
+    } finally {
+        $("addBtn").disabled = false;
+        updatePreview();
+    }
+};
+
+$("clearBtn").onclick = async () => {
+    await fetch("/api/jobs/clear-finished", { method: "POST" });
+    for (const [id, j] of jobs) {
+        if (["done", "error", "canceled", "expanded"].includes(j.status)) jobs.delete(id);
+    }
+    render();
+};
+
+$("clearAllBtn").onclick = async () => {
+    if (jobs.size && !confirm("Hủy các mục đang tải và xóa toàn bộ hàng đợi?")) return;
+    await fetch("/api/jobs/clear-all", { method: "POST" });
+    jobs.clear();
+    render();
+};
+
+// SSE realtime
+function connect() {
+    const es = new EventSource("/api/events");
+    es.addEventListener("snapshot", (e) => {
+        jobs.clear();
+        for (const j of JSON.parse(e.data)) jobs.set(j.id, j);
+        render();
+    });
+    es.addEventListener("job", (e) => {
+        const j = JSON.parse(e.data);
+        jobs.set(j.id, j);
+        render();
+    });
+    es.addEventListener("remove", (e) => {
+        jobs.delete(JSON.parse(e.data).id);
+        render();
+    });
+    es.onerror = () => { es.close(); setTimeout(connect, 2000); };
+}
+connect();
+
+// trạng thái cobalt instance
+async function refreshStatus() {
+    try {
+        const res = await fetch("/api/status");
+        const data = await res.json();
+        $("downloadDir").textContent = data.config.downloadDir;
+        $("queueHint").textContent =
+            `Tải đồng thời tối đa ${data.config.concurrency} file`;
+        const custom = data.customServices ?? [];
+        if (data.cobalt?.cobalt) {
+            const services = data.cobalt.cobalt.services ?? [];
+            $("cobaltDot").classList.add("on");
+            $("cobaltText").textContent =
+                `cobalt v${data.cobalt.cobalt.version} · ${services.length + custom.length} nền tảng`;
+            supportedServices = new Set([...services, ...custom]);
+        } else {
+            $("cobaltDot").classList.remove("on");
+            $("cobaltText").textContent = "cobalt chưa chạy — docker compose up -d";
+            // resolver riêng của app vẫn hoạt động dù cobalt offline
+            supportedServices = new Set(custom);
+        }
+        updatePreview();
+    } catch { /* server chưa sẵn sàng */ }
+}
+refreshStatus();
+setInterval(refreshStatus, 15000);
+updatePreview();
+</script>
+</body>
+</html>
