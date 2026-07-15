@@ -1,0 +1,63 @@
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-sm {
+  padding: var(--spacing-md);
+}
+
+.card-md {
+  padding: var(--spacing-lg);
+}
+
+.card-lg {
+  padding: var(--spacing-xl);
+}
+
+.card-header {
+  border-bottom: 1px solid var(--border);
+  padding: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.card-title {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+}
+
+.card-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.card-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.card-footer {
+  border-top: 1px solid var(--border);
+  padding: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+/* Hover effect */
+.card {
+  transition: all 0.2s;
+}
+
+.card:hover {
+  border-color: var(--accent);
+}
