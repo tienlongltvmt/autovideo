@@ -7,7 +7,8 @@
         "titleColor": "#F0C96A",
         "titleSize": 68,
         "logo": "logo.png",
-        "logoHeight": 130
+        "logoHeight": 130,
+        "font": "Times New Roman.ttf"
     },
     "watermark": {
         "subtext": "Dưỡng sinh đông y",
@@ -16,10 +17,12 @@
         "opacity": 0.55,
         "size": 44,
         "subSize": 34,
-        "x": 46,
-        "y": 60
+        "x": 69,
+        "y": 264,
+        "font": null
     },
     "font": "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
     "fontItalic": "/System/Library/Fonts/Supplemental/Arial Italic.ttf",
-    "suffix": " [brand]"
+    "suffix": " [brand]",
+    "overlays": []
 }

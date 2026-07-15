@@ -9,9 +9,9 @@ const FILE = path.join(config.dataDir, "jobs.json");
 let dirty = false;
 
 const PERSISTED_FIELDS = [
-    "id", "url", "options", "appOptions", "direct", "brand", "label",
-    "status", "filename", "filePath", "received", "total", "error",
-    "note", "attempts", "createdAt", "finishedAt",
+    "id", "url", "options", "appOptions", "direct", "brand", "voice",
+    "label", "status", "filename", "filePath", "received", "total",
+    "error", "note", "attempts", "createdAt", "finishedAt",
 ];
 
 function serialize(job) {

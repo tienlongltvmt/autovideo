@@ -7,6 +7,7 @@ import { emitJob } from "./jobs.js";
 import { findResolver } from "./resolvers/index.js";
 import { findExpander } from "./expanders/index.js";
 import { brandVideo, isVideoFile } from "./branding.js";
+import { generateVoice } from "./voice.js";
 
 const controllers = new Map();
 
@@ -186,6 +187,26 @@ export async function runJob(job, enqueueChild, requeue) {
     controllers.set(job.id, controller);
 
     try {
+        // job tạo giọng nói qua Voicebox → lưu vào kho nhạc nền
+        if (job.voice) {
+            job.status = "processing";
+            emitJob(job, true);
+            const outPath = await generateVoice(
+                job.voice, controller.signal,
+                (note) => { job.note = note; emitJob(job); }
+            );
+            const st = await fsp.stat(outPath);
+            job.filename = path.basename(outPath);
+            job.filePath = outPath;
+            job.received = st.size;
+            job.total = st.size;
+            job.note = "Đã lưu vào kho nhạc nền — dùng ở tab Chỉnh sửa để lồng tiếng";
+            job.status = "done";
+            job.finishedAt = Date.now();
+            emitJob(job, true);
+            return;
+        }
+
         // job gắn khung thương hiệu cho file đã tải xong
         if (job.brand) {
             if (!fs.existsSync(job.brand.input)) {
@@ -196,8 +217,13 @@ export async function runJob(job, enqueueChild, requeue) {
 
             const ext = path.extname(job.brand.input);
             const base = path.basename(job.brand.input, ext);
-            const outPath = await uniquePath(config.downloadDir, `${base} [brand].mp4`);
-            await brandVideo(job.brand.input, outPath, controller.signal);
+            const suffix = job.brand.suffix ?? " [brand]";
+            const outPath = await uniquePath(config.downloadDir, `${base}${suffix}.mp4`);
+            await brandVideo(
+                job.brand.input, outPath, controller.signal,
+                job.brand.edit
+                    ?? (job.brand.transform ? { transform: job.brand.transform } : null)
+            );
 
             const st = await fsp.stat(outPath);
             job.filename = path.basename(outPath);

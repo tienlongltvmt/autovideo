@@ -27,6 +27,12 @@ export const config = {
     downloadDir: path.resolve(process.env.DOWNLOAD_DIR || "./downloads"),
     dataDir: path.resolve(process.env.DATA_DIR || "./data"),
     brandingDir: path.resolve(process.env.BRANDING_DIR || "./branding"),
+    // API của Voicebox (app desktop mặc định lắng nghe cổng 17493)
+    voiceboxUrl: (process.env.VOICEBOX_API_URL || "http://localhost:17493").replace(/\/+$/, ""),
+    // API của OmniVoice Studio (app desktop mặc định cổng 3900)
+    omnivoiceUrl: (process.env.OMNIVOICE_API_URL || "http://localhost:3900").replace(/\/+$/, ""),
+    // API của VieNeu-TTS (server_api.py — engine tiếng Việt, cổng 3901)
+    vieneuUrl: (process.env.VIENEU_API_URL || "http://localhost:3901").replace(/\/+$/, ""),
     // nếu đặt, toàn bộ app yêu cầu đăng nhập Basic Auth (user bất kỳ + mật khẩu này)
     appPassword: process.env.APP_PASSWORD || "",
 };

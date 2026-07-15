@@ -1,33 +1,41 @@
 # DownloadAuto
 
-Ứng dụng tải **một hoặc nhiều video cùng lúc** từ nhiều nền tảng khác nhau
-(YouTube, TikTok, Instagram, Twitter/X, Facebook, Bilibili, SoundCloud, Vimeo,
-Reddit, Pinterest, Snapchat, Twitch clip, VK, OK, Rutube, Dailymotion, Bluesky,
-Tumblr, Loom, Streamable, Newgrounds, **Xiaohongshu/RedNote**).
+Bộ công cụ **tải → chỉnh sửa → lồng tiếng → xuất video** cho việc đăng lại
+nội dung với nhận diện thương hiệu riêng, gồm 3 tab:
 
-Ứng dụng dùng [cobalt](https://github.com/imputnet/cobalt) API (self-host) làm
-engine phân giải link, và bổ sung phần cobalt không có: **hàng đợi tải hàng
-loạt, tải đồng thời có giới hạn, tiến độ realtime, lưu file về máy**.
+| Tab | Chức năng |
+|---|---|
+| **Tải xuống** | Tải 1 hoặc nhiều video cùng lúc từ 22 nền tảng (YouTube, TikTok, Instagram, Twitter/X, Facebook, Bilibili, **Xiaohongshu/RedNote**…); dán cả đoạn văn bản là tự bắt link; hỗ trợ playlist YouTube |
+| **Chỉnh sửa** | Bố cục video kiểu Canva trong khung thương hiệu: kéo/zoom, cắt đoạn, vùng làm mờ che watermark gốc, thêm chữ + font, tốc độ, thay nhạc nền; chọn nhiều video xuất một lần |
+| **Giọng nói** | Tạo giọng đọc AI chạy local (có **14 giọng tiếng Việt** qua VieNeu-TTS) để lồng tiếng video |
+
+Giao diện **responsive cho điện thoại** và cài được như app (PWA — "Thêm vào
+màn hình chính"). Ứng dụng dùng [cobalt](https://github.com/imputnet/cobalt)
+API (self-host) làm engine phân giải link, và bổ sung phần cobalt không có:
+hàng đợi tải hàng loạt, tiến độ realtime, chỉnh sửa video bằng ffmpeg, lịch
+sử bền vững.
 
 ## Kiến trúc
 
 ```
-┌─────────────┐   dán nhiều link    ┌──────────────────┐   POST /{ url }   ┌─────────────┐
-│  Web UI     │ ──────────────────▶ │  downloadauto    │ ────────────────▶ │ cobalt API  │
-│ (trình duyệt)│ ◀────────────────── │  (Node/Express)  │ ◀──────────────── │  (Docker)   │
-└─────────────┘   SSE tiến độ       │  - hàng đợi      │  tunnel/redirect/ └─────────────┘
-                                    │  - concurrency   │  picker/error
-                                    │  - tải file      │
-                                    └────────┬─────────┘
-                                             ▼
-                                       downloads/
+┌──────────────┐  dán link / chỉnh sửa  ┌──────────────────┐   POST /{url}    ┌─────────────┐
+│   Web UI     │ ─────────────────────▶ │  downloadauto    │ ───────────────▶ │ cobalt API  │
+│ (máy tính /  │ ◀───────────────────── │  (Node/Express)  │ ◀─────────────── │  (Docker)   │
+│  điện thoại) │      SSE tiến độ       │  - hàng đợi      │  tunnel/redirect └─────────────┘
+└──────────────┘                        │  - resolver/     │
+                                        │    expander      │   /v1/audio/…    ┌─────────────┐
+                                        │  - ffmpeg (khung,│ ───────────────▶ │ engine TTS  │
+                                        │    cắt, mờ, chữ) │ ◀─────────────── │ VieNeu /    │
+                                        └────────┬─────────┘    file WAV      │ Voicebox /  │
+                                                 ▼                            │ OmniVoice   │
+                                       downloads/  data/music/                └─────────────┘
 ```
 
 - cobalt API nhận diện nền tảng và trả về link tải (`tunnel` = cobalt proxy/remux
   qua ffmpeg, `redirect` = link trực tiếp, `picker` = bài đăng nhiều ảnh/video).
 - downloadauto quản lý hàng đợi: mỗi URL là một job, tải song song tối đa
   `CONCURRENCY` file; bài đăng nhiều media (`picker`) tự động tách thành các
-  job con.
+  job con. Job chỉnh sửa/gắn khung/tạo giọng cũng chạy trong cùng hàng đợi.
 
 ## Cài đặt & chạy
 
@@ -44,6 +52,10 @@ npm start
 
 Mở **http://localhost:3000**, dán link — hoặc dán **cả đoạn văn bản chứa link**,
 app tự bắt link ra — rồi bấm **Tải xuống**. File được lưu vào thư mục `downloads/`.
+
+> 💡 Trên máy hiện tại app chạy ở cổng **3210** (đặt trong `.env` vì cổng
+> 3000 đã bị container khác chiếm) — các ví dụ `localhost:3000` bên dưới thì
+> thay bằng `localhost:3210`.
 
 ### Bắt link trong input
 
@@ -84,6 +96,106 @@ Lỗi mạng, rate-limit (HTTP 429), server quá tải (5xx)… được tự th
 2 lần với thời gian chờ tăng dần trước khi báo lỗi. Lỗi vĩnh viễn (video
 riêng tư, không hỗ trợ…) báo ngay không thử lại.
 
+### Gắn khung thương hiệu (branding)
+
+Tự động "đóng khung" video sau khi tải: banner trên cùng (nền màu + logo +
+tiêu đề) và watermark chìm đè lên video — dạng template cho việc đăng lại
+nội dung với nhận diện thương hiệu riêng.
+
+- Tick **"Gắn khung thương hiệu"** khi thêm link → tải xong tự gắn, ra file
+  mới `tên gốc [brand].mp4` (file gốc giữ nguyên); hoặc bấm nút **Gắn khung**
+  trên video đã tải xong.
+- Cấu hình trong [`branding/template.json`](branding/template.json): chữ và
+  màu banner, nội dung watermark, cỡ chữ, font. Đặt logo tại
+  `branding/logo.png` là tự hiện trong banner (bỏ trống thì banner chỉ có chữ).
+- Xử lý bằng ffmpeg (đóng gói sẵn qua `ffmpeg-static`, không cần cài thêm);
+  áp dụng cho cả video trong playlist/bài đăng nhiều media khi bật tùy chọn.
+- Chạy Docker (alpine): image không có font hệ thống — copy file `.ttf`
+  (font có hỗ trợ tiếng Việt) vào `branding/` và trỏ `"font"` trong
+  `template.json` tới đó, vd `"font": "Arial Bold.ttf"`.
+
+### Tab Chỉnh sửa — bố cục video kiểu Canva
+
+Tab **Chỉnh sửa** cho phép đặt video vào khung thương hiệu cố định (mặc định
+1080×1920, đổi bằng `canvas` trong `branding/template.json`) và chỉnh bố cục
+trực quan như Canva:
+
+- **Kéo** video trong khung để di chuyển, **lăn chuột** hoặc kéo thanh Zoom
+  để phóng to/thu nhỏ; nút nhanh *Vừa khung / Phủ kín / Căn giữa*
+- Preview hiển thị đúng banner + watermark theo template, dùng **cùng công
+  thức bố cục với ffmpeg** nên kết quả xuất giống hệt những gì thấy
+- **Chọn nhiều video** (checkbox / Chọn tất cả) rồi **Xuất N video** một lần —
+  mỗi video thành một job chạy song song trong hàng đợi, ra file
+  `tên gốc [edit].mp4`
+- Bật "Dùng chung bố cục" để áp một bố cục cho tất cả; tắt đi thì mỗi video
+  giữ bố cục riêng (bấm từng video để chỉnh)
+
+Ngoài bố cục, tab Chỉnh sửa còn có:
+
+- **Cắt đoạn** (riêng từng video): kéo 2 thanh Bắt đầu/Kết thúc — preview tự
+  phát lặp trong khoảng đã chọn
+- **Vùng làm mờ** (riêng từng video): bấm *＋ Thêm vùng mờ* rồi kéo thả/resize
+  ngay trên preview để che watermark hoặc chữ của nền tảng gốc — xuất ra sẽ
+  làm mờ đúng vùng đó
+- **Tốc độ** 0.5×–2× (âm thanh gốc tự chỉnh tempo theo, không bị méo giọng)
+- **Âm thanh**: giữ nguyên / tắt tiếng / **thay nhạc nền** — bấm *Tải nhạc
+  lên* để đưa file mp3/m4a/wav của bạn vào (lưu ở `data/music/`), nhạc tự
+  lặp theo độ dài video; kèm thanh chỉnh âm lượng
+- **Chữ trên video** (riêng từng video): bấm *＋ Thêm chữ* rồi kéo thả chữ
+  trên preview; sửa nội dung, **font**, cỡ chữ, màu trong toolbar. Font gồm
+  các font hệ thống phổ biến + font `.ttf/.otf` bạn bỏ vào thư mục
+  `branding/` — preview hiển thị đúng font thật, chữ xuất ra có bóng đổ nhẹ
+  cho dễ đọc
+- **Quản lý trong khung**: nút **✕** góc trên preview hoặc nút **"Gỡ video
+  khỏi khung"** để bỏ video đang chỉnh; nút **×** cạnh mỗi file trong danh
+  sách để xóa file khỏi ổ đĩa (có xác nhận)
+
+### Chỉnh khung thương hiệu ngay trên giao diện
+
+Bấm **"🖼 Chỉnh khung"** trong tab Chỉnh sửa để sửa khung trực quan, không
+cần đụng vào `template.json` (khung áp dụng chung cho mọi video):
+
+- **Tiêu đề banner**: nội dung, font, cỡ chữ, màu chữ, màu nền banner —
+  preview đổi ngay khi gõ
+- **Watermark**: 2 dòng chữ, font, màu, độ đậm; **kéo thả trực tiếp** trên
+  khung để đặt vị trí
+- **Thêm ảnh lên khung** (logo phụ, sticker, khuyến mãi...): bấm *＋ Thêm
+  ảnh lên khung* để upload (lưu ở `branding/images/`), rồi kéo di chuyển /
+  kéo góc resize / bấm × xóa ngay trên preview
+- Bấm **"Lưu khung"** để ghi vào `branding/template.json` — từ đó mọi lần
+  xuất và gắn khung đều dùng khung mới
+
+### Tab Giọng nói — tạo giọng đọc AI lồng tiếng video
+
+Hỗ trợ **3 engine** TTS mã nguồn mở chạy hoàn toàn local (tự nhận diện
+engine nào đang chạy, chọn qua dropdown):
+
+- 🇻🇳 [VieNeu-TTS](https://github.com/pnnbao97/VieNeu-TTS) — **chuyên tiếng
+  Việt** (khuyên dùng): 14 giọng có sẵn theo giới tính/vùng miền/phong cách,
+  clone giọng từ 3–8s audio, thẻ cảm xúc `[cười]` `[thở dài]`, 48 kHz, chạy
+  nhanh trên CPU/Apple Silicon (cổng 3901, wrapper `server_api.py` +
+  `start-server.sh` trong thư mục `VieNeu-TTS`)
+- [Voicebox](https://voicebox.sh) — 7 engine TTS, 23 ngôn ngữ (không có
+  tiếng Việt), 50+ giọng preset (cổng 17493 app / 17600 docker)
+- [OmniVoice Studio](https://github.com/debpalash/OmniVoice-Studio) — 14
+  engine TTS, 646 ngôn ngữ, API chuẩn OpenAI (cổng 3900)
+
+Nhập lời thoại (**không giới hạn độ dài** — tự chia đoạn theo câu và nối
+liền mạch bằng ffmpeg) → chọn giọng → **file giọng đọc rơi thẳng vào kho
+nhạc nền** → sang tab Chỉnh sửa chọn "Thay nhạc nền" là video được lồng
+tiếng. Kho âm thanh cho nghe thử và xóa file (`data/music/`).
+
+📖 **Hướng dẫn chi tiết**: [docs/huong-dan-giong-noi.md](docs/huong-dan-giong-noi.md)
+— trạng thái setup trên máy này, so sánh 3 engine, cách khởi động lại,
+clone giọng, xử lý sự cố.
+
+### Dùng trên điện thoại (PWA)
+
+Giao diện responsive đầy đủ — kéo thả video/chữ/vùng mờ hoạt động bằng cảm
+ứng. Điện thoại cùng mạng WiFi truy cập `http://<ip-máy-chạy-app>:3210`,
+rồi **"Thêm vào màn hình chính"** (Add to Home Screen) là thành app riêng
+chạy toàn màn hình.
+
 ### Lịch sử không mất khi restart
 
 Hàng đợi được lưu xuống `data/jobs.json` (đổi bằng `DATA_DIR`). Restart
@@ -99,9 +211,15 @@ Sao chép `.env.example` thành `.env` và chỉnh nếu cần:
 |---|---|---|
 | `COBALT_API_URL` | `http://localhost:9000` | URL của cobalt instance |
 | `COBALT_API_KEY` | *(trống)* | API key nếu instance yêu cầu xác thực |
-| `CONCURRENCY` | `3` | Số file tải đồng thời tối đa |
-| `DOWNLOAD_DIR` | `./downloads` | Thư mục lưu file |
+| `CONCURRENCY` | `3` | Số job chạy đồng thời tối đa |
+| `DOWNLOAD_DIR` | `./downloads` | Thư mục lưu file tải về |
+| `DATA_DIR` | `./data` | Lịch sử hàng đợi + kho nhạc nền (`data/music/`) |
+| `BRANDING_DIR` | `./branding` | Template khung, logo, font, ảnh khung |
 | `PORT` | `3000` | Cổng web app |
+| `APP_PASSWORD` | *(trống)* | Bật Basic Auth bảo vệ toàn app |
+| `VIENEU_API_URL` | `http://localhost:3901` | Engine giọng tiếng Việt VieNeu-TTS |
+| `VOICEBOX_API_URL` | `http://localhost:17493` | Engine giọng Voicebox |
+| `OMNIVOICE_API_URL` | `http://localhost:3900` | Engine giọng OmniVoice Studio |
 
 ## REST API
 

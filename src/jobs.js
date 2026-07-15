@@ -7,7 +7,7 @@ jobEvents.setMaxListeners(100);
 const jobs = new Map();
 
 // trạng thái: queued | resolving | downloading | done | expanded | error | canceled
-export function createJob({ url, options = {}, appOptions = {}, direct = null, brand = null, label = "" }) {
+export function createJob({ url, options = {}, appOptions = {}, direct = null, brand = null, voice = null, label = "" }) {
     const job = {
         id: crypto.randomBytes(6).toString("hex"),
         url,
@@ -15,6 +15,7 @@ export function createJob({ url, options = {}, appOptions = {}, direct = null, b
         appOptions, // tùy chọn của app (không gửi sang cobalt), vd { brand: true }
         direct, // { url, filename } — link tải trực tiếp (mục con của picker)
         brand, // { input } — job gắn khung thương hiệu cho file đã tải
+        voice, // { text, profileId, language } — job tạo giọng nói qua Voicebox
         label,
         status: "queued",
         filename: null,
@@ -42,6 +43,7 @@ export function restoreJob(data) {
         appOptions: {},
         direct: null,
         brand: null,
+        voice: null,
         label: "",
         speed: 0,
         attempts: 0,
@@ -65,8 +67,8 @@ export function internalJobs() {
 }
 
 export function publicJob(job) {
-    const { _lastEmit, _lastReceived, _lastTick, options, direct, brand, ...pub } = job;
-    return { ...pub, hasDirect: !!direct, isBrand: !!brand };
+    const { _lastEmit, _lastReceived, _lastTick, options, direct, brand, voice, ...pub } = job;
+    return { ...pub, hasDirect: !!direct, isBrand: !!brand, isVoice: !!voice };
 }
 
 // throttle phát sự kiện tiến độ để không dội SSE

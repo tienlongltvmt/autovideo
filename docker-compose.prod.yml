@@ -42,5 +42,8 @@ services:
         volumes:
             - ./downloads:/downloads
             - ./data:/data
+            # khung thương hiệu: template + logo + font (image alpine không có
+            # font hệ thống — đặt file .ttf vào branding/ và trỏ trong template.json)
+            - ./branding:/app/branding
         depends_on:
             - cobalt-api
